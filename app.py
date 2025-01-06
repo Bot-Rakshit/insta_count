@@ -11,6 +11,11 @@ CORS(app)
 app.url_map.strict_slashes = False
 monitors = {}
 
+# Print working directory and permissions at startup
+print(f"Working Directory: {os.getcwd()}")
+print(f"Directory Permissions: {oct(os.stat('.').st_mode)[-3:]}")
+print(f"User Running Process: {os.getuid()}:{os.getgid()}")
+
 def load_vapid_keys():
     try:
         with open('vapid_keys.txt', 'r') as f:
@@ -86,6 +91,10 @@ def subscribe():
     try:
         print(f"Received subscription info: {subscription_info}")  # Debug print
         
+        # Use absolute path in the application directory
+        subscription_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'last_subscription.json')
+        print(f"Will save subscription to: {subscription_file}")
+        
         # Validate subscription info
         if not subscription_info or 'endpoint' not in subscription_info or 'keys' not in subscription_info:
             print("Invalid subscription format")
@@ -95,12 +104,12 @@ def subscribe():
             }), 400
         
         # Save the subscription info for later use
-        print(f"Saving subscription to {os.path.abspath('last_subscription.json')}")
-        with open('last_subscription.json', 'w') as f:
+        print(f"Saving subscription to {subscription_file}")
+        with open(subscription_file, 'w') as f:
             json.dump(subscription_info, f)
         
         # Verify the file was saved
-        if not os.path.exists('last_subscription.json'):
+        if not os.path.exists(subscription_file):
             print("Failed to save subscription file")
             return jsonify({
                 'status': 'error',
@@ -138,7 +147,8 @@ def subscribe():
 @app.route('/amishi/api/test-notification/')
 def test_notification():
     try:
-        if not os.path.exists('last_subscription.json'):
+        subscription_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'last_subscription.json')
+        if not os.path.exists(subscription_file):
             return jsonify({
                 'status': 'error',
                 'message': 'No subscription file found. Please enable notifications first.'
@@ -186,7 +196,8 @@ def test_notification():
 @app.route('/amishi/api/subscription-status/')
 def subscription_status():
     try:
-        if os.path.exists('last_subscription.json'):
+        subscription_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'last_subscription.json')
+        if os.path.exists(subscription_file):
             with open('last_subscription.json', 'r') as f:
                 subscription = json.load(f)
             return jsonify({
