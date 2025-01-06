@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Follower Monitor</title>
+    <link rel="manifest" href="/static/manifest.json">
+</head>
+<body>
+    <div id="app">
+        <h1>Instagram Follower Monitor</h1>
+        <div id="stats"></div>
+        <button id="enableNotifications">Enable Notifications</button>
+    </div>
+
+    <script>
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/service-worker.js')
+                .then(function(registration) {
+                    console.log('Service Worker registered');
+                })
+                .catch(function(err) {
+                    console.log('Service Worker registration failed: ', err);
+                });
+        }
+
+        // Request notification permission
+        document.getElementById('enableNotifications').addEventListener('click', async () => {
+            try {
+                // First get the VAPID public key from the server
+                const response = await fetch('/api/vapid-public-key');
+                const data = await response.json();
+                const publicKey = data.publicKey;
+
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    const registration = await navigator.serviceWorker.ready;
+                    
+                    // Convert the VAPID public key to the format required by the browser
+                    function urlBase64ToUint8Array(base64String) {
+                        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                        const base64 = (base64String + padding)
+                            .replace(/\-/g, '+')
+                            .replace(/_/g, '/');
+
+                        const rawData = window.atob(base64);
+                        const outputArray = new Uint8Array(rawData.length);
+
+                        for (let i = 0; i < rawData.length; ++i) {
+                            outputArray[i] = rawData.charCodeAt(i);
+                        }
+                        return outputArray;
+                    }
+
+                    const subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(publicKey)
+                    });
+                    
+                    // Send subscription to server
+                    await fetch('/api/subscribe', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(subscription)
+                    });
+
+                    console.log('Push notification subscription successful');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+
+        // Fetch and display stats
+        async function updateStats() {
+            const response = await fetch('/api/stats/YOUR_USER_ID');
+            const stats = await response.json();
+            document.getElementById('stats').innerHTML = `
+                <img src="${stats.profile_pic_url}" alt="Profile Picture">
+                <h2>${stats.username}</h2>
+                <p>Followers: ${stats.follower_count}</p>
+                <p>Following: ${stats.following_count}</p>
+                <p>Posts: ${stats.media_count}</p>
+                <p>Bio: ${stats.biography}</p>
+            `;
+        }
+
+        updateStats();
+        setInterval(updateStats, 300000); // Update every 5 minutes
+    </script>
+</body>
+</html> 

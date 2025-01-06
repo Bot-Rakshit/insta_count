@@ -1,0 +1,74 @@
+from flask import Flask, jsonify, request
+from instagram_monitor import InstagramMonitor
+from datetime import datetime
+import json
+from pywebpush import webpush, WebPushException
+import os
+
+app = Flask(__name__)
+monitors = {}
+
+def load_vapid_keys():
+    try:
+        with open('vapid_keys.txt', 'r') as f:
+            content = f.read()
+            public_key = content.split('Public Key:\n')[1].split('\n\n')[0].strip()
+            private_key = content.split('Private Key:\n')[1].strip()
+        return public_key, private_key
+    except Exception as e:
+        print(f"Error loading VAPID keys: {e}")
+        return None, None
+
+# Update the app configuration
+public_key, private_key = load_vapid_keys()
+app.config['VAPID_PUBLIC_KEY'] = public_key or os.environ.get('VAPID_PUBLIC_KEY')
+app.config['VAPID_PRIVATE_KEY'] = private_key or os.environ.get('VAPID_PRIVATE_KEY')
+app.config['VAPID_CLAIMS'] = {
+    'sub': 'singhrakshit003@gmail.com',  # Replace with your email
+    'aud': 'https://fcm.googleapis.com'  # Required for Firebase Cloud Messaging
+}
+
+# Add a route to get the public key
+@app.route('/api/vapid-public-key')
+def get_vapid_public_key():
+    return jsonify({'publicKey': app.config['VAPID_PUBLIC_KEY']})
+
+@app.route('/api/start_monitoring', methods=['POST'])
+def start_monitoring():
+    data = request.json
+    user_id = data.get('user_id')
+    notification_interval = data.get('notification_interval', 100)
+    
+    if user_id not in monitors:
+        monitors[user_id] = InstagramMonitor(user_id, notification_interval)
+    
+    return jsonify({
+        'status': 'success',
+        'message': f'Started monitoring user ID: {user_id}'
+    })
+
+@app.route('/api/stats/<user_id>', methods=['GET'])
+def get_stats(user_id):
+    if user_id not in monitors:
+        monitors[user_id] = InstagramMonitor(user_id)
+    
+    stats = monitors[user_id].fetch_user_stats()
+    return jsonify(stats)
+
+@app.route('/api/subscribe', methods=['POST'])
+def subscribe():
+    subscription_info = request.json
+    
+    try:
+        webpush(
+            subscription_info=subscription_info,
+            data="Test notification",
+            vapid_private_key=app.config['VAPID_PRIVATE_KEY'],
+            vapid_claims=app.config['VAPID_CLAIMS']
+        )
+        return jsonify({'status': 'success'})
+    except WebPushException as ex:
+        return jsonify({'status': 'failed', 'message': str(ex)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True) 
