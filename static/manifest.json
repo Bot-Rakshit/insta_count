@@ -1,10 +1,11 @@
 {
     "name": "Instagram Follower Monitor",
     "short_name": "InstaMonitor",
-    "start_url": "/amishi",
+    "start_url": "/amishi/",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#000000",
+    "scope": "/amishi/",
     "description": "Monitor Instagram follower changes and get notifications",
     "categories": ["social", "utilities"],
     "orientation": "any",
