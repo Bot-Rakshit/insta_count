@@ -8,6 +8,7 @@ import os
 
 app = Flask(__name__)
 CORS(app)
+app.url_map.strict_slashes = False
 monitors = {}
 
 def load_vapid_keys():
@@ -31,11 +32,11 @@ app.config['VAPID_CLAIMS'] = {
 }
 
 # Add a route to get the public key
-@app.route('/amishi/api/vapid-public-key')
+@app.route('/amishi/api/vapid-public-key/')
 def get_vapid_public_key():
     return jsonify({'publicKey': app.config['VAPID_PUBLIC_KEY']})
 
-@app.route('/amishi/api/update_thresholds', methods=['POST'])
+@app.route('/amishi/api/update_thresholds/', methods=['POST'])
 def update_thresholds():
     data = request.json
     user_id = data.get('user_id')
@@ -51,7 +52,7 @@ def update_thresholds():
         'message': 'Thresholds updated successfully'
     })
 
-@app.route('/amishi/api/start_monitoring', methods=['POST'])
+@app.route('/amishi/api/start_monitoring/', methods=['POST'])
 def start_monitoring():
     data = request.json
     user_id = data.get('user_id')
@@ -70,7 +71,7 @@ def start_monitoring():
         'message': f'Started monitoring user ID: {user_id}'
     })
 
-@app.route('/amishi/api/stats/<user_id>', methods=['GET'])
+@app.route('/amishi/api/stats/<user_id>/', methods=['GET'])
 def get_stats(user_id):
     if user_id not in monitors:
         monitors[user_id] = InstagramMonitor(user_id)
@@ -78,7 +79,7 @@ def get_stats(user_id):
     stats = monitors[user_id].fetch_user_stats()
     return jsonify(stats)
 
-@app.route('/amishi/api/subscribe', methods=['POST'])
+@app.route('/amishi/api/subscribe/', methods=['POST'])
 def subscribe():
     subscription_info = request.json
     
@@ -93,7 +94,7 @@ def subscribe():
     except WebPushException as ex:
         return jsonify({'status': 'failed', 'message': str(ex)}), 500
 
-@app.route('/amishi/api/test-notification')
+@app.route('/amishi/api/test-notification/')
 def test_notification():
     try:
         # Get all active monitors
@@ -116,7 +117,7 @@ def test_notification():
 def root():
     return "Welcome to Instagram Monitor API"
 
-@app.route('/amishi')
+@app.route('/amishi/')
 def index():
     return render_template('index.html')
 
