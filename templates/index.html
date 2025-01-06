@@ -121,7 +121,7 @@
             const decreaseThreshold = document.getElementById('decreaseThreshold').value;
             
             try {
-                const response = await fetch('/amishi/api/update_thresholds', {
+                const response = await fetch('/amishi/api/update_thresholds/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -144,7 +144,7 @@
         // Start monitoring immediately when page loads
         async function startMonitoring() {
             try {
-                const response = await fetch('/amishi/api/start_monitoring', {
+                const response = await fetch('/amishi/api/start_monitoring/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -171,7 +171,7 @@
                 if (permission === 'granted') {
                     const registration = await navigator.serviceWorker.ready;
                     
-                    const response = await fetch('/amishi/api/vapid-public-key');
+                    const response = await fetch('/amishi/api/vapid-public-key/');
                     const data = await response.json();
                     const publicKey = data.publicKey;
 
@@ -195,7 +195,7 @@
                         applicationServerKey: urlBase64ToUint8Array(publicKey)
                     });
                     
-                    const subscribeResponse = await fetch('/amishi/api/subscribe', {
+                    const subscribeResponse = await fetch('/amishi/api/subscribe/', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -217,7 +217,7 @@
         // Fetch and display stats
         async function updateStats() {
             try {
-                const response = await fetch(`/amishi/api/stats/${INSTAGRAM_USER_ID}`);
+                const response = await fetch(`/amishi/api/stats/${INSTAGRAM_USER_ID}/`);
                 const stats = await response.json();
                 if (stats) {
                     document.getElementById('stats').innerHTML = `

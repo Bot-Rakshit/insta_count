@@ -12,6 +12,7 @@ __pycache__/
 # VAPID Keys
 vapid_keys.txt
 .env
+last_subscription.json
 
 # Logs
 *.log

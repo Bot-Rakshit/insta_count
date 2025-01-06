@@ -84,6 +84,10 @@ def subscribe():
     subscription_info = request.json
     
     try:
+        # Save the subscription info for later use
+        with open('last_subscription.json', 'w') as f:
+            json.dump(subscription_info, f)
+        
         webpush(
             subscription_info=subscription_info,
             data="Test notification",
@@ -102,12 +106,19 @@ def test_notification():
             stats = monitor.fetch_user_stats()
             if stats:
                 message = f"Test Notification!\n{stats['username']} has {stats['follower_count']} followers"
-                webpush(
-                    subscription_info=request.json,
-                    data=message,
-                    vapid_private_key=app.config['VAPID_PRIVATE_KEY'],
-                    vapid_claims=app.config['VAPID_CLAIMS']
-                )
+                # Try to read subscription info from the last successful subscription
+                try:
+                    with open('last_subscription.json', 'r') as f:
+                        subscription_info = json.load(f)
+                        webpush(
+                            subscription_info=subscription_info,
+                            data=message,
+                            vapid_private_key=app.config['VAPID_PRIVATE_KEY'],
+                            vapid_claims=app.config['VAPID_CLAIMS']
+                        )
+                except Exception as e:
+                    return jsonify({'status': 'error', 'message': 'No active subscription found. Please enable notifications first.'}), 400
+        
         return jsonify({'status': 'success', 'message': 'Test notification sent!'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
