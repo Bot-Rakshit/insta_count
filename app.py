@@ -84,43 +84,76 @@ def subscribe():
     subscription_info = request.json
     
     try:
+        print(f"Received subscription info: {subscription_info}")  # Debug print
+        
         # Save the subscription info for later use
         with open('last_subscription.json', 'w') as f:
             json.dump(subscription_info, f)
         
         webpush(
             subscription_info=subscription_info,
-            data="Test notification",
+            data="Notifications enabled successfully! 🎉",
             vapid_private_key=app.config['VAPID_PRIVATE_KEY'],
             vapid_claims=app.config['VAPID_CLAIMS']
         )
-        return jsonify({'status': 'success'})
+        return jsonify({
+            'status': 'success',
+            'message': 'Subscription successful',
+            'details': {
+                'subscription': subscription_info,
+                'vapid_claims': app.config['VAPID_CLAIMS']
+            }
+        })
     except WebPushException as ex:
+        print(f"WebPush Error: {str(ex)}")  # Debug print
         return jsonify({'status': 'failed', 'message': str(ex)}), 500
 
 @app.route('/amishi/api/test-notification/')
 def test_notification():
     try:
-        # Get all active monitors
+        if not os.path.exists('last_subscription.json'):
+            return jsonify({
+                'status': 'error',
+                'message': 'No subscription file found. Please enable notifications first.'
+            }), 400
+        
+        if not monitors:
+            return jsonify({
+                'status': 'error',
+                'message': 'No active monitors found. Please start monitoring first.'
+            }), 400
+        
         for user_id, monitor in monitors.items():
             stats = monitor.fetch_user_stats()
             if stats:
                 message = f"Test Notification!\n{stats['username']} has {stats['follower_count']} followers"
-                # Try to read subscription info from the last successful subscription
                 try:
                     with open('last_subscription.json', 'r') as f:
                         subscription_info = json.load(f)
+                        print(f"Sending notification with subscription: {subscription_info}")  # Debug print
                         webpush(
                             subscription_info=subscription_info,
                             data=message,
                             vapid_private_key=app.config['VAPID_PRIVATE_KEY'],
                             vapid_claims=app.config['VAPID_CLAIMS']
                         )
+                except FileNotFoundError:
+                    return jsonify({'status': 'error', 'message': 'Subscription file not found'}), 400
+                except json.JSONDecodeError:
+                    return jsonify({'status': 'error', 'message': 'Invalid subscription data'}), 400
                 except Exception as e:
-                    return jsonify({'status': 'error', 'message': 'No active subscription found. Please enable notifications first.'}), 400
+                    return jsonify({'status': 'error', 'message': f'Error sending notification: {str(e)}'}), 500
         
-        return jsonify({'status': 'success', 'message': 'Test notification sent!'})
+        return jsonify({
+            'status': 'success',
+            'message': 'Test notification sent!',
+            'details': {
+                'subscription': subscription_info,
+                'vapid_claims': app.config['VAPID_CLAIMS']
+            }
+        })
     except Exception as e:
+        print(f"Error in test_notification: {str(e)}")  # Debug print
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # Add root route
