@@ -5,15 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Instagram Follower Monitor</title>
     <link rel="manifest" href="/static/manifest.json">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #stats {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #0095f6;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0081d6;
+        }
+        .settings {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        input[type="number"] {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+    </style>
 </head>
 <body>
     <div id="app">
         <h1>Instagram Follower Monitor</h1>
+        <div class="settings">
+            <h3>Notification Settings</h3>
+            <div class="input-group">
+                <label>Follower Increase Threshold:</label>
+                <input type="number" id="increaseThreshold" value="100" min="1">
+            </div>
+            <div class="input-group">
+                <label>Follower Decrease Threshold:</label>
+                <input type="number" id="decreaseThreshold" value="100" min="1">
+            </div>
+            <button onclick="updateThresholds()">Save Thresholds</button>
+        </div>
         <div id="stats"></div>
         <button id="enableNotifications">Enable Notifications</button>
     </div>
 
     <script>
+        const INSTAGRAM_USER_ID = "51651500950";
+
         // Register service worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/static/service-worker.js')
@@ -25,19 +79,65 @@
                 });
         }
 
+        async function updateThresholds() {
+            const increaseThreshold = document.getElementById('increaseThreshold').value;
+            const decreaseThreshold = document.getElementById('decreaseThreshold').value;
+            
+            try {
+                const response = await fetch('/api/update_thresholds', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        user_id: INSTAGRAM_USER_ID,
+                        increase_threshold: parseInt(increaseThreshold),
+                        decrease_threshold: parseInt(decreaseThreshold)
+                    })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    alert('Thresholds updated successfully!');
+                }
+            } catch (error) {
+                console.error('Error updating thresholds:', error);
+            }
+        }
+
+        // Start monitoring immediately when page loads
+        async function startMonitoring() {
+            try {
+                const response = await fetch('/api/start_monitoring', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        user_id: INSTAGRAM_USER_ID,
+                        increase_threshold: document.getElementById('increaseThreshold').value,
+                        decrease_threshold: document.getElementById('decreaseThreshold').value
+                    })
+                });
+                const result = await response.json();
+                if (result.status === 'success') {
+                    updateStats();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
         // Request notification permission
         document.getElementById('enableNotifications').addEventListener('click', async () => {
             try {
-                // First get the VAPID public key from the server
-                const response = await fetch('/api/vapid-public-key');
-                const data = await response.json();
-                const publicKey = data.publicKey;
-
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
                     const registration = await navigator.serviceWorker.ready;
                     
-                    // Convert the VAPID public key to the format required by the browser
+                    const response = await fetch('/api/vapid-public-key');
+                    const data = await response.json();
+                    const publicKey = data.publicKey;
+
                     function urlBase64ToUint8Array(base64String) {
                         const padding = '='.repeat((4 - base64String.length % 4) % 4);
                         const base64 = (base64String + padding)
@@ -58,38 +158,69 @@
                         applicationServerKey: urlBase64ToUint8Array(publicKey)
                     });
                     
-                    // Send subscription to server
-                    await fetch('/api/subscribe', {
+                    const subscribeResponse = await fetch('/api/subscribe', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify(subscription)
                     });
-
-                    console.log('Push notification subscription successful');
+                    
+                    const result = await subscribeResponse.json();
+                    if (result.status === 'success') {
+                        alert('Notifications enabled successfully!');
+                    }
                 }
             } catch (error) {
                 console.error('Error:', error);
+                alert('Error enabling notifications: ' + error.message);
             }
         });
 
         // Fetch and display stats
         async function updateStats() {
-            const response = await fetch('/api/stats/YOUR_USER_ID');
-            const stats = await response.json();
-            document.getElementById('stats').innerHTML = `
-                <img src="${stats.profile_pic_url}" alt="Profile Picture">
-                <h2>${stats.username}</h2>
-                <p>Followers: ${stats.follower_count}</p>
-                <p>Following: ${stats.following_count}</p>
-                <p>Posts: ${stats.media_count}</p>
-                <p>Bio: ${stats.biography}</p>
-            `;
+            try {
+                const response = await fetch(`/api/stats/${INSTAGRAM_USER_ID}`);
+                const stats = await response.json();
+                if (stats) {
+                    document.getElementById('stats').innerHTML = `
+                        <h2 style="text-align: center;">${stats.username}</h2>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; margin: 20px 0;">
+                            <div>
+                                <strong>${stats.follower_count.toLocaleString()}</strong>
+                                <div>Followers</div>
+                            </div>
+                            <div>
+                                <strong>${stats.following_count.toLocaleString()}</strong>
+                                <div>Following</div>
+                            </div>
+                            <div>
+                                <strong>${stats.media_count.toLocaleString()}</strong>
+                                <div>Posts</div>
+                            </div>
+                        </div>
+                        <p style="white-space: pre-wrap;">${stats.biography || ''}</p>
+                        ${stats.external_url ? `<p><a href="${stats.external_url}" target="_blank">${stats.external_url}</a></p>` : ''}
+                        <p>Last Updated: ${new Date(stats.last_updated).toLocaleString()}</p>
+                    `;
+                } else {
+                    document.getElementById('stats').innerHTML = `
+                        <p style="color: red;">Error loading profile data. Please try again later.</p>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+                document.getElementById('stats').innerHTML = `
+                    <p style="color: red;">Error: ${error.message}</p>
+                `;
+            }
         }
 
-        updateStats();
-        setInterval(updateStats, 300000); // Update every 5 minutes
+        // Start monitoring when page loads
+        startMonitoring();
+        
+        // Update stats every 5 minutes
+        setInterval(updateStats, 300000);
     </script>
 </body>
 </html> 

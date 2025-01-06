@@ -1,4 +1,5 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
+from flask_cors import CORS
 from instagram_monitor import InstagramMonitor
 from datetime import datetime
 import json
@@ -6,6 +7,7 @@ from pywebpush import webpush, WebPushException
 import os
 
 app = Flask(__name__)
+CORS(app)
 monitors = {}
 
 def load_vapid_keys():
@@ -33,14 +35,35 @@ app.config['VAPID_CLAIMS'] = {
 def get_vapid_public_key():
     return jsonify({'publicKey': app.config['VAPID_PUBLIC_KEY']})
 
+@app.route('/api/update_thresholds', methods=['POST'])
+def update_thresholds():
+    data = request.json
+    user_id = data.get('user_id')
+    increase_threshold = data.get('increase_threshold', 100)
+    decrease_threshold = data.get('decrease_threshold', 100)
+    
+    if user_id in monitors:
+        monitors[user_id].increase_threshold = increase_threshold
+        monitors[user_id].decrease_threshold = decrease_threshold
+        
+    return jsonify({
+        'status': 'success',
+        'message': 'Thresholds updated successfully'
+    })
+
 @app.route('/api/start_monitoring', methods=['POST'])
 def start_monitoring():
     data = request.json
     user_id = data.get('user_id')
-    notification_interval = data.get('notification_interval', 100)
+    increase_threshold = data.get('increase_threshold', 100)
+    decrease_threshold = data.get('decrease_threshold', 100)
     
     if user_id not in monitors:
-        monitors[user_id] = InstagramMonitor(user_id, notification_interval)
+        monitors[user_id] = InstagramMonitor(
+            user_id, 
+            increase_threshold=int(increase_threshold),
+            decrease_threshold=int(decrease_threshold)
+        )
     
     return jsonify({
         'status': 'success',
@@ -69,6 +92,11 @@ def subscribe():
         return jsonify({'status': 'success'})
     except WebPushException as ex:
         return jsonify({'status': 'failed', 'message': str(ex)}), 500
+
+# Add root route
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 if __name__ == '__main__':
     app.run(debug=True) 
