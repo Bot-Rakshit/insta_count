@@ -86,9 +86,26 @@ def subscribe():
     try:
         print(f"Received subscription info: {subscription_info}")  # Debug print
         
+        # Validate subscription info
+        if not subscription_info or 'endpoint' not in subscription_info or 'keys' not in subscription_info:
+            print("Invalid subscription format")
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid subscription format'
+            }), 400
+        
         # Save the subscription info for later use
+        print(f"Saving subscription to {os.path.abspath('last_subscription.json')}")
         with open('last_subscription.json', 'w') as f:
             json.dump(subscription_info, f)
+        
+        # Verify the file was saved
+        if not os.path.exists('last_subscription.json'):
+            print("Failed to save subscription file")
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to save subscription'
+            }), 500
         
         webpush(
             subscription_info=subscription_info,
@@ -96,17 +113,27 @@ def subscribe():
             vapid_private_key=app.config['VAPID_PRIVATE_KEY'],
             vapid_claims=app.config['VAPID_CLAIMS']
         )
+        
+        # Read back the saved subscription to verify
+        with open('last_subscription.json', 'r') as f:
+            saved_subscription = json.load(f)
+            print(f"Verified saved subscription: {saved_subscription}")
+        
         return jsonify({
             'status': 'success',
             'message': 'Subscription successful',
             'details': {
                 'subscription': subscription_info,
-                'vapid_claims': app.config['VAPID_CLAIMS']
+                'vapid_claims': app.config['VAPID_CLAIMS'],
+                'file_path': os.path.abspath('last_subscription.json')
             }
         })
     except WebPushException as ex:
         print(f"WebPush Error: {str(ex)}")  # Debug print
         return jsonify({'status': 'failed', 'message': str(ex)}), 500
+    except Exception as e:
+        print(f"General Error: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/amishi/api/test-notification/')
 def test_notification():
@@ -155,6 +182,35 @@ def test_notification():
     except Exception as e:
         print(f"Error in test_notification: {str(e)}")  # Debug print
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/amishi/api/subscription-status/')
+def subscription_status():
+    try:
+        if os.path.exists('last_subscription.json'):
+            with open('last_subscription.json', 'r') as f:
+                subscription = json.load(f)
+            return jsonify({
+                'status': 'success',
+                'message': 'Subscription found',
+                'details': {
+                    'subscription': subscription,
+                    'file_path': os.path.abspath('last_subscription.json')
+                }
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'No subscription found',
+                'details': {
+                    'working_directory': os.getcwd(),
+                    'file_path': os.path.abspath('last_subscription.json')
+                }
+            })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 # Add root route
 @app.route('/')
