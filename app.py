@@ -93,6 +93,24 @@ def subscribe():
     except WebPushException as ex:
         return jsonify({'status': 'failed', 'message': str(ex)}), 500
 
+@app.route('/amishi/api/test-notification')
+def test_notification():
+    try:
+        # Get all active monitors
+        for user_id, monitor in monitors.items():
+            stats = monitor.fetch_user_stats()
+            if stats:
+                message = f"Test Notification!\n{stats['username']} has {stats['follower_count']} followers"
+                webpush(
+                    subscription_info=request.json,
+                    data=message,
+                    vapid_private_key=app.config['VAPID_PRIVATE_KEY'],
+                    vapid_claims=app.config['VAPID_CLAIMS']
+                )
+        return jsonify({'status': 'success', 'message': 'Test notification sent!'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 # Add root route
 @app.route('/')
 def root():
