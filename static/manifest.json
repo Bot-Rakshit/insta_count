@@ -1,7 +1,7 @@
 {
     "name": "Instagram Follower Monitor",
     "short_name": "InstaMonitor",
-    "start_url": "/",
+    "start_url": "/amishi",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#000000",

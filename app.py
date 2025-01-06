@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, redirect
 from flask_cors import CORS
 from instagram_monitor import InstagramMonitor
 from datetime import datetime
@@ -31,11 +31,11 @@ app.config['VAPID_CLAIMS'] = {
 }
 
 # Add a route to get the public key
-@app.route('/api/vapid-public-key')
+@app.route('/amishi/api/vapid-public-key')
 def get_vapid_public_key():
     return jsonify({'publicKey': app.config['VAPID_PUBLIC_KEY']})
 
-@app.route('/api/update_thresholds', methods=['POST'])
+@app.route('/amishi/api/update_thresholds', methods=['POST'])
 def update_thresholds():
     data = request.json
     user_id = data.get('user_id')
@@ -51,7 +51,7 @@ def update_thresholds():
         'message': 'Thresholds updated successfully'
     })
 
-@app.route('/api/start_monitoring', methods=['POST'])
+@app.route('/amishi/api/start_monitoring', methods=['POST'])
 def start_monitoring():
     data = request.json
     user_id = data.get('user_id')
@@ -70,7 +70,7 @@ def start_monitoring():
         'message': f'Started monitoring user ID: {user_id}'
     })
 
-@app.route('/api/stats/<user_id>', methods=['GET'])
+@app.route('/amishi/api/stats/<user_id>', methods=['GET'])
 def get_stats(user_id):
     if user_id not in monitors:
         monitors[user_id] = InstagramMonitor(user_id)
@@ -78,7 +78,7 @@ def get_stats(user_id):
     stats = monitors[user_id].fetch_user_stats()
     return jsonify(stats)
 
-@app.route('/api/subscribe', methods=['POST'])
+@app.route('/amishi/api/subscribe', methods=['POST'])
 def subscribe():
     subscription_info = request.json
     
@@ -94,9 +94,14 @@ def subscribe():
         return jsonify({'status': 'failed', 'message': str(ex)}), 500
 
 # Add root route
-@app.route('/')
+@app.route('/amishi')
 def index():
     return render_template('index.html')
+
+# Redirect root to /amishi
+@app.route('/')
+def redirect_to_amishi():
+    return redirect('/amishi')
 
 if __name__ == '__main__':
     app.run(debug=True) 
