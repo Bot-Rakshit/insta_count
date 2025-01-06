@@ -49,6 +49,9 @@
 <body>
     <div id="app">
         <h1>Instagram Follower Monitor</h1>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <button id="installButton" style="display: none;">Install App</button>
+        </div>
         <div class="settings">
             <h3>Notification Settings</h3>
             <div class="input-group">
@@ -67,6 +70,7 @@
 
     <script>
         const INSTAGRAM_USER_ID = "51651500950";
+        let deferredPrompt;
 
         // Register service worker
         if ('serviceWorker' in navigator) {
@@ -78,6 +82,37 @@
                     console.log('Service Worker registration failed: ', err);
                 });
         }
+
+        // Handle PWA installation
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            // Show the install button
+            document.getElementById('installButton').style.display = 'inline-block';
+        });
+
+        // Install button click handler
+        document.getElementById('installButton').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // Show the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                // Clear the deferredPrompt variable
+                deferredPrompt = null;
+                // Hide the install button
+                document.getElementById('installButton').style.display = 'none';
+            }
+        });
+
+        // Hide the install button after installation
+        window.addEventListener('appinstalled', () => {
+            document.getElementById('installButton').style.display = 'none';
+            console.log('PWA was installed');
+        });
 
         async function updateThresholds() {
             const increaseThreshold = document.getElementById('increaseThreshold').value;

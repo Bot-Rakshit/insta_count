@@ -5,11 +5,25 @@
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#000000",
+    "description": "Monitor Instagram follower changes and get notifications",
+    "categories": ["social", "utilities"],
+    "orientation": "any",
     "icons": [
         {
             "src": "/static/icon-192x192.png",
             "sizes": "192x192",
             "type": "image/png"
+        },
+        {
+            "src": "/static/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "/static/maskable_icon.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
         }
     ]
 } 
