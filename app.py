@@ -94,14 +94,13 @@ def subscribe():
         return jsonify({'status': 'failed', 'message': str(ex)}), 500
 
 # Add root route
+@app.route('/')
+def root():
+    return "Welcome to Instagram Monitor API"
+
 @app.route('/amishi')
 def index():
     return render_template('index.html')
-
-# Redirect root to /amishi
-@app.route('/')
-def redirect_to_amishi():
-    return redirect('/amishi')
 
 if __name__ == '__main__':
     app.run(debug=True) 
