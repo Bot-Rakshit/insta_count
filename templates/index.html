@@ -139,14 +139,15 @@
         .graph {
             font-family: monospace;
             white-space: pre;
-            font-size: 12px;
+            font-size: 14px;
             line-height: 1.2;
             overflow-x: scroll;
             -webkit-overflow-scrolling: touch;
-            padding: 16px;
+            padding: 24px;
             margin: 0;
             border-radius: 4px;
             background: var(--background-color);
+            letter-spacing: 0.1em;
         }
 
         .history-container {
@@ -263,6 +264,12 @@
             h2 {
                 font-size: 18px;
                 margin: 8px 0;
+            }
+
+            .graph {
+                font-size: 12px;
+                padding: 16px;
+                letter-spacing: normal;
             }
         }
 
@@ -505,29 +512,33 @@
             const values = displayHistory.map(h => h.count);
             const max = Math.max(...values);
             const min = Math.min(...values);
-            const range = max - min || 1; // Prevent division by zero
+            // Add some padding to min/max for better visualization
+            const padding = Math.ceil((max - min) * 0.1);
+            const effectiveMax = max + padding;
+            const effectiveMin = Math.max(0, min - padding);
+            const range = effectiveMax - effectiveMin || 1;
             const height = 20; // Increased height for better visibility
-            let graph = '\n📊 Follower Count Over Time\n\n';
+            let graph = '\n';
 
             // Calculate y-axis label width
-            const maxLabelWidth = max.toLocaleString().length;
+            const maxLabelWidth = effectiveMax.toLocaleString().length;
 
             // Create y-axis labels
             for (let i = height - 1; i >= 0; i--) {
-                const value = min + (range * (i / (height - 1)));
+                const value = effectiveMin + (range * (i / (height - 1)));
                 const label = value.toFixed(0).toLocaleString();
-                graph += label.padStart(maxLabelWidth) + ' │';
+                graph += label.padStart(maxLabelWidth) + ' ┤';
                 
                 // Add data points
                 for (let j = 0; j < values.length; j++) {
-                    const normalizedValue = (values[j] - min) / range;
+                    const normalizedValue = (values[j] - effectiveMin) / range;
                     const position = Math.round(normalizedValue * (height - 1));
                     // Add data points with connecting lines
                     if (position === i) {
                         const hour = new Date(displayHistory[j].timestamp).getHours();
-                        graph += hour >= 6 && hour < 18 ? '⬤' : '◯';
+                        graph += '●';
                     } else if (position > i) {
-                        graph += '│';
+                        graph += '│'; // Vertical connecting line
                     } else {
                         graph += ' ';
                     }
@@ -536,15 +547,15 @@
             }
 
             // Add x-axis
-            graph += ' '.repeat(maxLabelWidth) + ' └' + '━'.repeat(values.length) + '\n';
+            graph += ' '.repeat(maxLabelWidth) + ' └' + '─'.repeat(values.length) + '\n';
             
             // Add time markers
             let timeMarkers = ' '.repeat(maxLabelWidth) + '  ';
-            const markerInterval = Math.floor(values.length / 4); // Show 4 time points
+            const markerInterval = Math.floor(values.length / 6); // Show 6 time points
             for (let i = 0; i < values.length; i++) {
                 if (i % markerInterval === 0) {
                     const time = formatDate(displayHistory[i].timestamp);
-                    timeMarkers += '↑' + ' '.repeat(markerInterval - 1);
+                    timeMarkers += '│' + ' '.repeat(markerInterval - 1);
                 } else {
                     timeMarkers += ' ';
                 }
@@ -556,13 +567,17 @@
             for (let i = 0; i < values.length; i++) {
                 if (i % markerInterval === 0) {
                     const time = formatDate(displayHistory[i].timestamp);
-                    timeLabels += time.padEnd(markerInterval);
+                    // Only show hour:minute for better readability
+                    const shortTime = time.split(' ')[1] || time;
+                    timeLabels += shortTime.padEnd(markerInterval);
                 }
             }
             graph += timeLabels;
 
-            // Add legend
-            graph += '\n\n⬤ Day (6 AM - 6 PM)   ◯ Night (6 PM - 6 AM)';
+            // Add min/max indicators
+            graph += '\n\n' + ' '.repeat(maxLabelWidth) + 
+                     `  Min: ${min.toLocaleString()} │ Max: ${max.toLocaleString()} │ ` +
+                     `Current: ${values[values.length - 1].toLocaleString()}`;
 
             graphElement.textContent = graph;
         }
