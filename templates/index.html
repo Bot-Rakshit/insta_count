@@ -345,21 +345,13 @@
             let now = new Date(nowStr);
             let d = new Date(dateStr);
 
-            if (d.toDateString() === now.toDateString()) {
-                return d.toLocaleTimeString('en-US', { 
-                    timeZone: 'Asia/Kolkata',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                });
-            }
-            return d.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' }) + ' ' + 
-                   d.toLocaleTimeString('en-US', { 
-                       timeZone: 'Asia/Kolkata',
-                       hour: '2-digit',
-                       minute: '2-digit',
-                       hour12: true
-                   });
+            // Just return time in 24-hour format
+            return d.toLocaleTimeString('en-US', { 
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
         }
 
         // Load history from server
@@ -562,14 +554,28 @@
             }
             graph += timeMarkers + '\n';
             
-            // Add time labels
+            // Add time labels with date headers
+            let currentDate = '';
             let timeLabels = ' '.repeat(maxLabelWidth) + '  ';
             for (let i = 0; i < values.length; i++) {
                 if (i % markerInterval === 0) {
-                    const time = formatDate(displayHistory[i].timestamp);
-                    // Only show hour:minute for better readability
-                    const shortTime = time.split(' ')[1] || time;
-                    timeLabels += shortTime.padEnd(markerInterval);
+                    const timestamp = new Date(displayHistory[i].timestamp);
+                    const dateStr = timestamp.toLocaleDateString('en-US', { 
+                        timeZone: 'Asia/Kolkata',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                    
+                    // If date has changed, add a date marker
+                    if (dateStr !== currentDate) {
+                        timeLabels = timeLabels.trimEnd() + '\n' + 
+                            ' '.repeat(maxLabelWidth) + '  ' + 
+                            '[ ' + dateStr + ' ]\n' +
+                            ' '.repeat(maxLabelWidth) + '  ';
+                        currentDate = dateStr;
+                    }
+
+                    timeLabels += formatDate(displayHistory[i].timestamp).padEnd(markerInterval);
                 }
             }
             graph += timeLabels;
@@ -617,7 +623,12 @@
             const historyHtml = Object.values(groupedHistory).reverse().map(day => `
                 <div class="history-item">
                     <div>
-                        <div class="history-date">${day.date}</div>
+                        <div class="history-date">${new Date(day.date).toLocaleDateString('en-US', {
+                            timeZone: 'Asia/Kolkata',
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric'
+                        })}</div>
                         <div class="history-stats">
                             Start: ${day.start.toLocaleString()} → End: ${day.end.toLocaleString()}
                             <br>
