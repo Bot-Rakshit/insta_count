@@ -338,27 +338,28 @@
             try {
                 // Only fetch if enough time has passed
                 const now = Date.now();
-                if (now - lastUpdate < UPDATE_INTERVAL) {
+                if (now - lastUpdate < UPDATE_INTERVAL && followerHistory.length > 0) {
                     return;
                 }
                 
                 const response = await fetch(`/amishi/api/data/${INSTAGRAM_USER_ID}/`);
                 const data = await response.json();
                 
-                if (data.stats) {
+                if (data.stats && data.history) {
                     followerHistory = data.history;
                     updateUI(data.stats);
                     lastUpdate = now;
+                    // Update UI immediately after loading history
+                    updateGraph();
+                    updateHistory();
+                    updateCountdown();
+                } else {
+                    throw new Error('Failed to fetch Instagram data');
                 }
-                
-                // Update UI immediately after loading history
-                updateGraph();
-                updateHistory();
-                updateCountdown();  // Restart countdown after successful fetch
             } catch (error) {
                 console.error('Error loading history:', error);
-                followerHistory = [];
                 showError(error);
+                throw error;  // Propagate error for better handling
             }
         }
 
@@ -367,7 +368,7 @@
                 <div class="empty-state">
                     <h3>Error Loading Data</h3>
                     <p>${error.message}</p>
-                    <p>Retrying in: <span id="nextUpdate" class="loading">5:00</span></p>
+                    <p>Retrying in a few seconds...</p>
                 </div>
             `;
         }
@@ -407,17 +408,15 @@
                     })
                 });
                 const result = await response.json();
-                if (result.status === 'success') {
-                    await fetchData();  // Fetch data immediately after starting monitor
+                if (result.status === 'success' && result.stats) {
+                    // Use initial stats from monitoring response
+                    updateUI(result.stats);
+                    return true;
                 }
+                return false;
             } catch (error) {
                 console.error('Error:', error);
-                document.getElementById('stats').innerHTML = `
-                    <div class="empty-state">
-                        <h3>Starting Monitor...</h3>
-                        <p>Please wait while we fetch the initial data.</p>
-                    </div>
-                `;
+                throw error;
             }
         }
 
@@ -440,15 +439,23 @@
             `;
             
             try {
-                // Try to fetch data first
+                // Start monitoring first
+                const monitoringStarted = await startMonitoring();
+                
+                if (!monitoringStarted) {
+                    throw new Error('Failed to start monitoring');
+                }
+                
+                // Then fetch full data including history
                 await fetchData();
-                // Then start monitoring
-                await startMonitoring();
+                
                 // Start the update interval
                 updateInterval = setInterval(fetchData, UPDATE_INTERVAL);
             } catch (error) {
                 console.error('Error during initialization:', error);
                 showError(error);
+                // Retry after 5 seconds
+                setTimeout(init, 5000);
             }
         }
 

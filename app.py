@@ -33,8 +33,13 @@ def start_monitoring():
     
     # Fetch initial stats
     stats = monitors[user_id].fetch_user_stats()
-    if stats:
-        save_history(user_id, stats)
+    if not stats:
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to fetch initial stats'
+        }), 400
+    
+    save_history(user_id, stats)
     
     return jsonify({
         'status': 'success',
