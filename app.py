@@ -107,7 +107,6 @@ def subscribe():
         print(f"Saving subscription to {subscription_file}")
         with open(subscription_file, 'w') as f:
             json.dump(subscription_info, f)
-        
         # Verify the file was saved
         if not os.path.exists(subscription_file):
             print("Failed to save subscription file")
