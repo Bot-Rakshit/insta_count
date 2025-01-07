@@ -8,7 +8,7 @@
     <style>
         :root {
             --primary-color: #0095f6;
-            --secondary-color: #00376b;
+            --secondary-color: #1a73e8;
             --background-color: #fafafa;
             --card-background: #ffffff;
             --text-color: #262626;
@@ -17,6 +17,11 @@
             --error-color: #ff1744;
             --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             --border-radius: 12px;
+            --grid-line-color: #e0e0e0;
+            --axis-label-color: #666666;
+            --data-point-color: #1a73e8;
+            --line-color: #1a73e8;
+            --date-label-color: #333333;
         }
 
         body {
@@ -156,27 +161,35 @@
 
         .graph .axis line,
         .graph .axis path {
-            stroke: var(--border-color);
+            stroke: var(--grid-line-color);
+            stroke-width: 1;
         }
 
         .graph .axis text {
-            fill: var(--text-color);
+            fill: var(--axis-label-color);
+            font-size: 12px;
+            font-weight: 500;
         }
 
         .graph .line {
             fill: none;
-            stroke: var(--primary-color);
-            stroke-width: 2;
+            stroke: var(--line-color);
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         .graph .data-point {
-            fill: var(--primary-color);
+            fill: var(--data-point-color);
             r: 4;
+            stroke: white;
+            stroke-width: 2;
         }
 
         .graph .date-label {
-            fill: var(--secondary-color);
+            fill: var(--date-label-color);
             font-size: 12px;
+            font-weight: 600;
         }
 
         .history-container {
@@ -308,8 +321,13 @@
                 --background-color: #121212;
                 --card-background: #1e1e1e;
                 --text-color: #ffffff;
-                --border-color: #2d2d2d;
-                --secondary-color: #89b4e8;
+                --border-color: #333333;
+                --secondary-color: #64b5f6;
+                --grid-line-color: #333333;
+                --axis-label-color: #bbbbbb;
+                --data-point-color: #64b5f6;
+                --line-color: #64b5f6;
+                --date-label-color: #dddddd;
             }
 
             .graph {
@@ -566,7 +584,7 @@
             for (let i = 0; i <= yTickCount; i++) {
                 const y = yMin + (yMax - yMin) * (i / yTickCount);
                 const yPos = margin.top + yScale(y);
-                gridLines += `<line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" stroke="var(--border-color)" stroke-width="0.5" opacity="0.5"/>`;
+                gridLines += `<line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" stroke="var(--grid-line-color)" stroke-width="1" opacity="0.5"/>`;
                 timeLabels += `<text x="${margin.left - 10}" y="${yPos}" text-anchor="end" alignment-baseline="middle">${Math.round(y).toLocaleString()}</text>`;
             }
 
@@ -604,12 +622,21 @@
 
             graphElement.innerHTML = `
                 <svg viewBox="0 0 ${width} ${height}">
+                    <defs>
+                        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
                     <g class="axis">
                         ${gridLines}
-                        <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="var(--border-color)" stroke-width="1"/>
-                        <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="var(--border-color)" stroke-width="1"/>
+                        <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="var(--grid-line-color)" stroke-width="2"/>
+                        <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="var(--grid-line-color)" stroke-width="2"/>
                     </g>
-                    <path class="line" d="${path}"/>
+                    <path class="line" d="${path}" filter="url(#glow)"/>
                     ${dataPoints}
                     ${dateLabels}
                     ${timeLabels}
