@@ -137,17 +137,46 @@
         }
 
         .graph {
-            font-family: monospace;
-            white-space: pre;
             font-size: 14px;
-            line-height: 1.2;
             overflow-x: scroll;
             -webkit-overflow-scrolling: touch;
             padding: 24px;
             margin: 0;
             border-radius: 4px;
             background: var(--background-color);
-            letter-spacing: 0.1em;
+            height: 400px;
+            width: 100%;
+            min-width: 600px;
+        }
+
+        .graph svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .graph .axis line,
+        .graph .axis path {
+            stroke: var(--border-color);
+        }
+
+        .graph .axis text {
+            fill: var(--text-color);
+        }
+
+        .graph .line {
+            fill: none;
+            stroke: var(--primary-color);
+            stroke-width: 2;
+        }
+
+        .graph .data-point {
+            fill: var(--primary-color);
+            r: 4;
+        }
+
+        .graph .date-label {
+            fill: var(--secondary-color);
+            font-size: 12px;
         }
 
         .history-container {
@@ -486,9 +515,7 @@
 
         function updateGraph() {
             const graphElement = document.getElementById('graph');
-            // Limit the number of points to prevent performance issues
-            const maxPoints = 288; // 24 hours worth of 5-minute intervals
-            const displayHistory = followerHistory.slice(-maxPoints);
+            const displayHistory = followerHistory.slice(-288); // Last 24 hours
 
             if (displayHistory.length < 2) {
                 graphElement.innerHTML = `
@@ -501,91 +528,93 @@
                 return;
             }
 
+            // Prepare data
             const values = displayHistory.map(h => h.count);
+            const timestamps = displayHistory.map(h => new Date(h.timestamp));
             const max = Math.max(...values);
             const min = Math.min(...values);
-            // Add some padding to min/max for better visualization
             const padding = Math.ceil((max - min) * 0.1);
-            const effectiveMax = max + padding;
-            const effectiveMin = Math.max(0, min - padding);
-            const range = effectiveMax - effectiveMin || 1;
-            const height = 20; // Increased height for better visibility
-            let graph = '\n';
+            const yMax = max + padding;
+            const yMin = Math.max(0, min - padding);
 
-            // Calculate y-axis label width
-            const maxLabelWidth = effectiveMax.toLocaleString().length;
+            // SVG dimensions
+            const width = graphElement.clientWidth;
+            const height = 400;
+            const margin = { top: 20, right: 30, bottom: 50, left: 60 };
+            const innerWidth = width - margin.left - margin.right;
+            const innerHeight = height - margin.top - margin.bottom;
 
-            // Create y-axis labels
-            for (let i = height - 1; i >= 0; i--) {
-                const value = effectiveMin + (range * (i / (height - 1)));
-                const label = value.toFixed(0).toLocaleString();
-                graph += label.padStart(maxLabelWidth) + ' ┤';
-                
-                // Add data points
-                for (let j = 0; j < values.length; j++) {
-                    const normalizedValue = (values[j] - effectiveMin) / range;
-                    const position = Math.round(normalizedValue * (height - 1));
-                    // Add data points with connecting lines
-                    if (position === i) {
-                        const hour = new Date(displayHistory[j].timestamp).getHours();
-                        graph += '●';
-                    } else if (position > i) {
-                        graph += '│'; // Vertical connecting line
-                    } else {
-                        graph += ' ';
-                    }
-                }
-                graph += '\n';
+            // Create scales
+            const xScale = (x) => (x - timestamps[0]) * innerWidth / (timestamps[timestamps.length - 1] - timestamps[0]);
+            const yScale = (y) => innerHeight - (y - yMin) * innerHeight / (yMax - yMin);
+
+            // Generate line path
+            let path = `M ${margin.left + xScale(timestamps[0])} ${margin.top + yScale(values[0])}`;
+            for (let i = 1; i < values.length; i++) {
+                path += ` L ${margin.left + xScale(timestamps[i])} ${margin.top + yScale(values[i])}`;
             }
 
-            // Add x-axis
-            graph += ' '.repeat(maxLabelWidth) + ' └' + '─'.repeat(values.length) + '\n';
-            
-            // Add time markers
-            let timeMarkers = ' '.repeat(maxLabelWidth) + '  ';
-            const markerInterval = Math.floor(values.length / 6); // Show 6 time points
-            for (let i = 0; i < values.length; i++) {
-                if (i % markerInterval === 0) {
-                    const time = formatDate(displayHistory[i].timestamp);
-                    timeMarkers += '│' + ' '.repeat(markerInterval - 1);
-                } else {
-                    timeMarkers += ' ';
-                }
-            }
-            graph += timeMarkers + '\n';
-            
-            // Add time labels with date headers
+            // Create SVG content
             let currentDate = '';
-            let timeLabels = ' '.repeat(maxLabelWidth) + '  ';
-            for (let i = 0; i < values.length; i++) {
-                if (i % markerInterval === 0) {
-                    const timestamp = new Date(displayHistory[i].timestamp);
-                    const dateStr = timestamp.toLocaleDateString('en-US', { 
-                        timeZone: 'Asia/Kolkata',
-                        month: 'short',
-                        day: 'numeric'
-                    });
-                    
-                    // If date has changed, add a date marker
-                    if (dateStr !== currentDate) {
-                        timeLabels = timeLabels.trimEnd() + '\n' + 
-                            ' '.repeat(maxLabelWidth) + '  ' + 
-                            '[ ' + dateStr + ' ]\n' +
-                            ' '.repeat(maxLabelWidth) + '  ';
-                        currentDate = dateStr;
-                    }
+            let dateLabels = '';
+            let timeLabels = '';
+            let dataPoints = '';
+            let gridLines = '';
 
-                    timeLabels += formatDate(displayHistory[i].timestamp).padEnd(markerInterval);
+            // Add grid lines and labels
+            const yTickCount = 5;
+            for (let i = 0; i <= yTickCount; i++) {
+                const y = yMin + (yMax - yMin) * (i / yTickCount);
+                const yPos = margin.top + yScale(y);
+                gridLines += `<line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" stroke="var(--border-color)" stroke-width="0.5" opacity="0.5"/>`;
+                timeLabels += `<text x="${margin.left - 10}" y="${yPos}" text-anchor="end" alignment-baseline="middle">${Math.round(y).toLocaleString()}</text>`;
+            }
+
+            // Add time labels and data points
+            for (let i = 0; i < values.length; i++) {
+                const x = margin.left + xScale(timestamps[i]);
+                const y = margin.top + yScale(values[i]);
+                
+                // Add data point
+                dataPoints += `<circle class="data-point" cx="${x}" cy="${y}"/>`;
+                
+                // Add date labels when date changes
+                const dateStr = timestamps[i].toLocaleDateString('en-US', { 
+                    timeZone: 'Asia/Kolkata',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                
+                if (dateStr !== currentDate) {
+                    currentDate = dateStr;
+                    dateLabels += `<text class="date-label" x="${x}" y="${height - 10}" text-anchor="middle">${dateStr}</text>`;
+                }
+                
+                // Add time labels for every 4 hours
+                if (i % 48 === 0) {  // 48 = 4 hours of 5-minute intervals
+                    const time = timestamps[i].toLocaleTimeString('en-US', {
+                        timeZone: 'Asia/Kolkata',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                    timeLabels += `<text x="${x}" y="${height - 25}" text-anchor="middle">${time}</text>`;
                 }
             }
-            graph += timeLabels;
 
-            // Add min/max indicators
-            graph += '\n\n' + ' '.repeat(maxLabelWidth) + 
-                     `  Min: ${min.toLocaleString()} │ Max: ${max.toLocaleString()} │ ` +
-                     `Current: ${values[values.length - 1].toLocaleString()}`;
-
-            graphElement.textContent = graph;
+            graphElement.innerHTML = `
+                <svg viewBox="0 0 ${width} ${height}">
+                    <g class="axis">
+                        ${gridLines}
+                        <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="var(--border-color)" stroke-width="1"/>
+                        <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="var(--border-color)" stroke-width="1"/>
+                    </g>
+                    <path class="line" d="${path}"/>
+                    ${dataPoints}
+                    ${dateLabels}
+                    ${timeLabels}
+                </svg>
+            `;
         }
 
         function updateHistory() {
