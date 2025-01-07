@@ -325,12 +325,25 @@
 
         // Format date for display
         function formatDate(date) {
-            const now = new Date();
-            const d = new Date(date);
+            const now = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+            const d = new Date(date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+            now = new Date(now);
+            d = new Date(d);
             if (d.toDateString() === now.toDateString()) {
-                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return d.toLocaleTimeString('en-US', { 
+                    timeZone: 'Asia/Kolkata',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
             }
-            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return d.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' }) + ' ' + 
+                   d.toLocaleTimeString('en-US', { 
+                       timeZone: 'Asia/Kolkata',
+                       hour: '2-digit',
+                       minute: '2-digit',
+                       hour12: true
+                   });
         }
 
         // Load history from server
@@ -392,7 +405,11 @@
                 </div>
                 <p style="white-space: pre-wrap; text-align: center;">${stats.biography || ''}</p>
                 ${stats.external_url ? `<p style="text-align: center;"><a href="${stats.external_url}" target="_blank">${stats.external_url}</a></p>` : ''}
-                <p style="text-align: center; color: var(--secondary-color);">Last Updated: ${new Date(stats.last_updated).toLocaleString()}</p>
+                <p style="text-align: center; color: var(--secondary-color);">Last Updated: ${new Date(stats.last_updated).toLocaleString('en-US', { 
+                    timeZone: 'Asia/Kolkata',
+                    dateStyle: 'medium',
+                    timeStyle: 'medium'
+                })}</p>
             `;
         }
 

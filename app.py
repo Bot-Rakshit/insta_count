@@ -1,9 +1,10 @@
 from flask import Flask, jsonify, request, render_template, redirect
 from flask_cors import CORS
 from instagram_monitor import InstagramMonitor
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
+import pytz
 
 app = Flask(__name__)
 CORS(app)
@@ -134,9 +135,12 @@ def save_history(user_id, stats):
     if user_id not in history:
         history[user_id] = []
     
+    ist = pytz.timezone('Asia/Kolkata')
+    current_time = datetime.now(ist)
+    
     history[user_id].append({
         'count': stats['follower_count'],
-        'timestamp': datetime.now().isoformat()
+        'timestamp': current_time.isoformat()
     })
     
     # Keep only last 7 days of data
