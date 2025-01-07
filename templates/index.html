@@ -133,16 +133,20 @@
             border-radius: 8px;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            position: relative;
         }
 
         .graph {
             font-family: monospace;
             white-space: pre;
-            font-size: 10px;
+            font-size: 12px;
             line-height: 1.2;
             overflow-x: scroll;
             -webkit-overflow-scrolling: touch;
-            padding-bottom: 16px;
+            padding: 16px;
+            margin: 0;
+            border-radius: 4px;
+            background: var(--background-color);
         }
 
         .history-container {
@@ -270,6 +274,10 @@
                 --text-color: #ffffff;
                 --border-color: #2d2d2d;
                 --secondary-color: #89b4e8;
+            }
+
+            .graph {
+                background: var(--card-background);
             }
         }
     </style>
@@ -498,22 +506,28 @@
             const max = Math.max(...values);
             const min = Math.min(...values);
             const range = max - min || 1; // Prevent division by zero
-            const height = 15; // Increased height for better visibility
-            let graph = '  Follower Count Over Time\n\n';
+            const height = 20; // Increased height for better visibility
+            let graph = '\n📊 Follower Count Over Time\n\n';
+
+            // Calculate y-axis label width
+            const maxLabelWidth = max.toLocaleString().length;
 
             // Create y-axis labels
             for (let i = height - 1; i >= 0; i--) {
                 const value = min + (range * (i / (height - 1)));
-                graph += value.toFixed(0).padStart(8) + ' │';
+                const label = value.toFixed(0).toLocaleString();
+                graph += label.padStart(maxLabelWidth) + ' │';
                 
                 // Add data points
                 for (let j = 0; j < values.length; j++) {
                     const normalizedValue = (values[j] - min) / range;
                     const position = Math.round(normalizedValue * (height - 1));
-                    // Use different characters for different times of day
+                    // Add data points with connecting lines
                     if (position === i) {
-                        const hour = new Date(followerHistory[j].timestamp).getHours();
-                        graph += hour >= 6 && hour < 18 ? '●' : '○';
+                        const hour = new Date(displayHistory[j].timestamp).getHours();
+                        graph += hour >= 6 && hour < 18 ? '⬤' : '◯';
+                    } else if (position > i) {
+                        graph += '│';
                     } else {
                         graph += ' ';
                     }
@@ -522,17 +536,33 @@
             }
 
             // Add x-axis
-            graph += '         └' + '─'.repeat(values.length) + '\n';
+            graph += ' '.repeat(maxLabelWidth) + ' └' + '━'.repeat(values.length) + '\n';
             
-            // Add time labels more sparsely
-            const timeLabels = [];
-            const interval = Math.floor(values.length / 6); // Show 6 time points
-            for (let i = 0; i < values.length; i += interval) {
-                timeLabels.push(formatDate(followerHistory[i].timestamp));
+            // Add time markers
+            let timeMarkers = ' '.repeat(maxLabelWidth) + '  ';
+            const markerInterval = Math.floor(values.length / 4); // Show 4 time points
+            for (let i = 0; i < values.length; i++) {
+                if (i % markerInterval === 0) {
+                    const time = formatDate(displayHistory[i].timestamp);
+                    timeMarkers += '↑' + ' '.repeat(markerInterval - 1);
+                } else {
+                    timeMarkers += ' ';
+                }
             }
-            timeLabels.push(formatDate(followerHistory[values.length - 1].timestamp));
+            graph += timeMarkers + '\n';
             
-            graph += '         ' + timeLabels.join('  ');
+            // Add time labels
+            let timeLabels = ' '.repeat(maxLabelWidth) + '  ';
+            for (let i = 0; i < values.length; i++) {
+                if (i % markerInterval === 0) {
+                    const time = formatDate(displayHistory[i].timestamp);
+                    timeLabels += time.padEnd(markerInterval);
+                }
+            }
+            graph += timeLabels;
+
+            // Add legend
+            graph += '\n\n⬤ Day (6 AM - 6 PM)   ◯ Night (6 PM - 6 AM)';
 
             graphElement.textContent = graph;
         }

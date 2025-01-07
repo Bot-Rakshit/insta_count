@@ -1,15 +1,27 @@
 from flask import Flask, jsonify, request, render_template, redirect
 from flask_cors import CORS
 from instagram_monitor import InstagramMonitor
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import json
 import os
-import pytz
 
 app = Flask(__name__)
 CORS(app)
 app.url_map.strict_slashes = False
 monitors = {}
+
+try:
+    import pytz
+except ImportError:
+    # Fallback to datetime without pytz if not available
+    from datetime import datetime, timezone
+    ist_offset = timezone(timedelta(hours=5, minutes=30))
+    def get_ist_time():
+        return datetime.now(ist_offset)
+else:
+    def get_ist_time():
+        ist = pytz.timezone('Asia/Kolkata')
+        return datetime.now(ist)
 
 @app.route('/amishi/api/update_thresholds/', methods=['POST'])
 def update_thresholds():
@@ -135,8 +147,7 @@ def save_history(user_id, stats):
     if user_id not in history:
         history[user_id] = []
     
-    ist = pytz.timezone('Asia/Kolkata')
-    current_time = datetime.now(ist)
+    current_time = get_ist_time()
     
     history[user_id].append({
         'count': stats['follower_count'],
