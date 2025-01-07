@@ -301,6 +301,8 @@
         const MAX_HISTORY = 2016; // 7 days of 5-minute intervals
         let lastUpdate = 0;
         const UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
+        let updateInterval = null;
+        let countdownInterval = null;
 
         // Handle PWA installation
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -352,6 +354,7 @@
                 // Update UI immediately after loading history
                 updateGraph();
                 updateHistory();
+                updateCountdown();  // Restart countdown after successful fetch
             } catch (error) {
                 console.error('Error loading history:', error);
                 followerHistory = [];
@@ -405,7 +408,7 @@
                 });
                 const result = await response.json();
                 if (result.status === 'success') {
-                    updateStats();
+                    await fetchData();  // Fetch data immediately after starting monitor
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -420,6 +423,14 @@
 
         // Initialize the page
         async function init() {
+            // Clear any existing intervals
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+
             // Show loading state
             document.getElementById('stats').innerHTML = `
                 <div class="empty-state">
@@ -428,15 +439,26 @@
                 </div>
             `;
             
-            // Start monitoring
-            await startMonitoring();
-            // Initial data fetch
-            await fetchData();
+            try {
+                // Try to fetch data first
+                await fetchData();
+                // Then start monitoring
+                await startMonitoring();
+                // Start the update interval
+                updateInterval = setInterval(fetchData, UPDATE_INTERVAL);
+            } catch (error) {
+                console.error('Error during initialization:', error);
+                showError(error);
+            }
         }
 
         function updateGraph() {
             const graphElement = document.getElementById('graph');
-            if (followerHistory.length < 2) {
+            // Limit the number of points to prevent performance issues
+            const maxPoints = 288; // 24 hours worth of 5-minute intervals
+            const displayHistory = followerHistory.slice(-maxPoints);
+
+            if (displayHistory.length < 2) {
                 graphElement.innerHTML = `
                     <div class="empty-state">
                         <h3>Collecting Data...</h3>
@@ -447,7 +469,7 @@
                 return;
             }
 
-            const values = followerHistory.map(h => h.count);
+            const values = displayHistory.map(h => h.count);
             const max = Math.max(...values);
             const min = Math.min(...values);
             const range = max - min || 1; // Prevent division by zero
@@ -542,31 +564,46 @@
 
         // Update countdown timer
         function updateCountdown() {
-            const nextUpdate = document.getElementById('nextUpdate');
-            if (!nextUpdate) return;
-
+            // Clear existing countdown
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
             let timeLeft = 300; // 5 minutes in seconds
             
-            const countdown = setInterval(() => {
+            countdownInterval = setInterval(() => {
+                const nextUpdate = document.getElementById('nextUpdate');
+                if (!nextUpdate) {
+                    clearInterval(countdownInterval);
+                    return;
+                }
+
                 const minutes = Math.floor(timeLeft / 60);
                 const seconds = timeLeft % 60;
                 nextUpdate.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
                 
                 if (timeLeft === 0) {
                     timeLeft = 300;
+                    fetchData();  // Fetch new data when countdown reaches zero
                 } else {
                     timeLeft--;
                 }
             }, 1000);
-
-            return countdown;
         }
 
-        // Initialize when page loads
-        init();
-        
-        // Update stats every 5 minutes
-        setInterval(fetchData, UPDATE_INTERVAL);
+        // Initialize when page loads and add error handling
+        window.addEventListener('load', () => {
+            init().catch(error => {
+                console.error('Error during initialization:', error);
+                showError(error);
+            });
+        });
+
+        // Clean up when page unloads
+        window.addEventListener('unload', () => {
+            if (updateInterval) clearInterval(updateInterval);
+            if (countdownInterval) clearInterval(countdownInterval);
+        });
     </script>
 </body>
 </html> 

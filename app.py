@@ -29,15 +29,17 @@ def start_monitoring():
     user_id = data.get('user_id')
     
     if user_id not in monitors:
-        monitors[user_id] = InstagramMonitor(
-            user_id, 
-            increase_threshold=int(increase_threshold),
-            decrease_threshold=int(decrease_threshold)
-        )
+        monitors[user_id] = InstagramMonitor(user_id)
+    
+    # Fetch initial stats
+    stats = monitors[user_id].fetch_user_stats()
+    if stats:
+        save_history(user_id, stats)
     
     return jsonify({
         'status': 'success',
-        'message': f'Started monitoring user ID: {user_id}'
+        'message': f'Started monitoring user ID: {user_id}',
+        'stats': stats
     })
 
 @app.route('/amishi/api/data/<user_id>/', methods=['GET'])
