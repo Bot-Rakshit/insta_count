@@ -325,10 +325,11 @@
 
         // Format date for display
         function formatDate(date) {
-            const now = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
-            const d = new Date(date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
-            now = new Date(now);
-            d = new Date(d);
+            let nowStr = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+            let dateStr = new Date(date).toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
+            let now = new Date(nowStr);
+            let d = new Date(dateStr);
+
             if (d.toDateString() === now.toDateString()) {
                 return d.toLocaleTimeString('en-US', { 
                     timeZone: 'Asia/Kolkata',
