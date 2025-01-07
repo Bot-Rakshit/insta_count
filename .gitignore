@@ -13,6 +13,7 @@ __pycache__/
 vapid_keys.txt
 .env
 last_subscription.json
+follower_history.json
 
 # Logs
 *.log

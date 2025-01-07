@@ -13,6 +13,10 @@
             --card-background: #ffffff;
             --text-color: #262626;
             --border-color: #dbdbdb;
+            --success-color: #00c853;
+            --error-color: #ff1744;
+            --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            --border-radius: 12px;
         }
 
         body {
@@ -22,32 +26,39 @@
             margin: 0;
             padding: 0;
             line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
         }
 
         .container {
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 12px;
+            box-sizing: border-box;
         }
 
         .card {
             background: var(--card-background);
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            padding: 24px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            padding: 16px;
             margin-bottom: 24px;
+            overflow: hidden;
         }
 
         .header {
             text-align: center;
-            margin-bottom: 32px;
+            margin-bottom: 16px;
+            background: var(--card-background);
+            padding: 16px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
         }
 
         h1 {
             color: var(--secondary-color);
-            font-size: 24px;
+            font-size: 20px;
             margin: 0;
-            padding: 16px 0;
+            padding: 8px 0;
         }
 
         button {
@@ -88,17 +99,23 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 16px;
             text-align: center;
-            margin: 24px 0;
+            margin: 16px 0;
+            padding: 8px;
         }
 
         .stat-item {
             padding: 16px;
             border-radius: 8px;
             background: var(--background-color);
+            transition: transform 0.2s;
+        }
+
+        .stat-item:active {
+            transform: scale(0.98);
         }
 
         .stat-value {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             color: var(--primary-color);
         }
@@ -106,33 +123,43 @@
         .stat-label {
             font-size: 14px;
             color: var(--secondary-color);
+            margin-top: 4px;
         }
 
         .graph-container {
-            margin: 24px 0;
+            margin: 16px 0;
             padding: 16px;
             background: var(--card-background);
             border-radius: 8px;
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .graph {
             font-family: monospace;
             white-space: pre;
-            font-size: 12px;
+            font-size: 10px;
             line-height: 1.2;
+            overflow-x: scroll;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 16px;
         }
 
         .history-container {
-            margin-top: 24px;
+            margin-top: 16px;
         }
 
         .history-item {
-            padding: 12px;
+            padding: 12px 8px;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
         }
 
         .history-time {
@@ -143,25 +170,32 @@
         .history-date {
             font-weight: bold;
             color: var(--secondary-color);
+            font-size: 14px;
         }
 
         .history-stats {
             font-size: 14px;
             color: var(--text-color);
             margin-top: 4px;
+            line-height: 1.4;
         }
 
         .history-change {
             font-weight: bold;
-            font-size: 16px;
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
         }
 
         .history-change.positive {
-            color: #00c853;
+            color: var(--success-color);
+            background: rgba(0, 200, 83, 0.1);
         }
 
         .history-change.negative {
-            color: #ff1744;
+            color: var(--error-color);
+            background: rgba(255, 23, 68, 0.1);
         }
 
         .empty-state {
@@ -187,11 +221,55 @@
 
         @media (max-width: 600px) {
             .container {
-                padding: 12px;
+                padding: 8px;
             }
 
             .stats-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                padding: 4px;
+            }
+
+            .stat-item {
+                padding: 12px 8px;
+            }
+
+            .stat-value {
+                font-size: 18px;
+            }
+
+            .stat-label {
+                font-size: 12px;
+            }
+
+            .history-item {
+                padding: 12px 8px;
+            }
+
+            .history-stats {
+                width: 100%;
+                margin-top: 8px;
+            }
+
+            .card {
+                padding: 12px;
+                margin-bottom: 16px;
+            }
+
+            h2 {
+                font-size: 18px;
+                margin: 8px 0;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background-color: #121212;
+                --card-background: #1e1e1e;
+                --text-color: #ffffff;
+                --border-color: #2d2d2d;
+                --secondary-color: #89b4e8;
             }
         }
     </style>
@@ -200,20 +278,6 @@
     <div class="container">
         <div class="header">
             <h1>Instagram Follower Monitor</h1>
-            <button id="installButton" style="display: none;">Install App</button>
-        </div>
-
-        <div class="card settings">
-            <h2>Notification Settings</h2>
-            <div class="input-group">
-                <label>Follower Increase Threshold:</label>
-                <input type="number" id="increaseThreshold" value="100" min="1">
-            </div>
-            <div class="input-group">
-                <label>Follower Decrease Threshold:</label>
-                <input type="number" id="decreaseThreshold" value="100" min="1">
-            </div>
-            <button onclick="updateThresholds()">Save Thresholds</button>
         </div>
 
         <div class="card" id="stats"></div>
@@ -227,111 +291,13 @@
             <h2>Recent Updates</h2>
             <div id="history"></div>
         </div>
-
-        <div class="card">
-            <button id="enableNotifications">Enable Notifications</button>
-        </div>
     </div>
 
     <script>
         const INSTAGRAM_USER_ID = "51651500950";
-        let deferredPrompt;
         let followerHistory = [];
         const MAX_HISTORY = 2016; // 7 days of 5-minute intervals
 
-        // Load history from localStorage on startup
-        function loadHistory() {
-            const saved = localStorage.getItem('followerHistory');
-            if (saved) {
-                followerHistory = JSON.parse(saved);
-            }
-        }
-
-        // Save history to localStorage
-        function saveHistory() {
-            localStorage.setItem('followerHistory', JSON.stringify(followerHistory));
-        }
-
-        // Format date for display
-        function formatDate(date) {
-            const now = new Date();
-            const d = new Date(date);
-            if (d.toDateString() === now.toDateString()) {
-                return d.toLocaleTimeString();
-            }
-            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString();
-        }
-
-        // Register service worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/static/service-worker.js', {
-                scope: '/amishi/'
-            })
-                .then(function(registration) {
-                    console.log('Service Worker registered');
-                })
-                .catch(function(err) {
-                    console.log('Service Worker registration failed: ', err);
-                });
-        }
-
-        // Handle PWA installation
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent Chrome 67 and earlier from automatically showing the prompt
-            e.preventDefault();
-            // Stash the event so it can be triggered later
-            deferredPrompt = e;
-            // Show the install button
-            document.getElementById('installButton').style.display = 'inline-block';
-        });
-
-        // Install button click handler
-        document.getElementById('installButton').addEventListener('click', async () => {
-            if (deferredPrompt) {
-                // Show the install prompt
-                deferredPrompt.prompt();
-                // Wait for the user to respond to the prompt
-                const { outcome } = await deferredPrompt.userChoice;
-                console.log(`User response to the install prompt: ${outcome}`);
-                // Clear the deferredPrompt variable
-                deferredPrompt = null;
-                // Hide the install button
-                document.getElementById('installButton').style.display = 'none';
-            }
-        });
-
-        // Hide the install button after installation
-        window.addEventListener('appinstalled', () => {
-            document.getElementById('installButton').style.display = 'none';
-            console.log('PWA was installed');
-        });
-
-        async function updateThresholds() {
-            const increaseThreshold = document.getElementById('increaseThreshold').value;
-            const decreaseThreshold = document.getElementById('decreaseThreshold').value;
-            
-            try {
-                const response = await fetch('/amishi/api/update_thresholds/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        user_id: INSTAGRAM_USER_ID,
-                        increase_threshold: parseInt(increaseThreshold),
-                        decrease_threshold: parseInt(decreaseThreshold)
-                    })
-                });
-                const result = await response.json();
-                if (result.status === 'success') {
-                    alert('Thresholds updated successfully!');
-                }
-            } catch (error) {
-                console.error('Error updating thresholds:', error);
-            }
-        }
-
-        // Start monitoring immediately when page loads
         async function startMonitoring() {
             try {
                 const response = await fetch('/amishi/api/start_monitoring/', {
@@ -340,9 +306,7 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ 
-                        user_id: INSTAGRAM_USER_ID,
-                        increase_threshold: document.getElementById('increaseThreshold').value,
-                        decrease_threshold: document.getElementById('decreaseThreshold').value
+                        user_id: INSTAGRAM_USER_ID
                     })
                 });
                 const result = await response.json();
@@ -353,56 +317,6 @@
                 console.error('Error:', error);
             }
         }
-
-        // Request notification permission
-        document.getElementById('enableNotifications').addEventListener('click', async () => {
-            try {
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    const registration = await navigator.serviceWorker.ready;
-                    
-                    const response = await fetch('/amishi/api/vapid-public-key/');
-                    const data = await response.json();
-                    const publicKey = data.publicKey;
-
-                    function urlBase64ToUint8Array(base64String) {
-                        const padding = '='.repeat((4 - base64String.length % 4) % 4);
-                        const base64 = (base64String + padding)
-                            .replace(/\-/g, '+')
-                            .replace(/_/g, '/');
-
-                        const rawData = window.atob(base64);
-                        const outputArray = new Uint8Array(rawData.length);
-
-                        for (let i = 0; i < rawData.length; ++i) {
-                            outputArray[i] = rawData.charCodeAt(i);
-                        }
-                        return outputArray;
-                    }
-
-                    const subscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array(publicKey)
-                    });
-                    
-                    const subscribeResponse = await fetch('/amishi/api/subscribe/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(subscription)
-                    });
-                    
-                    const result = await subscribeResponse.json();
-                    if (result.status === 'success') {
-                        alert('Notifications enabled successfully!');
-                    }
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error enabling notifications: ' + error.message);
-            }
-        });
 
         function updateGraph() {
             const graphElement = document.getElementById('graph');
@@ -537,15 +451,8 @@
                 const response = await fetch(`/amishi/api/stats/${INSTAGRAM_USER_ID}/`);
                 const stats = await response.json();
                 if (stats) {
-                    // Update follower history
-                    followerHistory.push({
-                        count: stats.follower_count,
-                        timestamp: new Date().toISOString()
-                    });
-                    if (followerHistory.length > MAX_HISTORY) {
-                        followerHistory.shift();
-                    }
-                    saveHistory();
+                    // Reload history from server
+                    await loadHistory();
 
                     // Update UI
                     document.getElementById('stats').innerHTML = `

@@ -82,6 +82,8 @@ def get_stats(user_id):
         monitors[user_id] = InstagramMonitor(user_id)
     
     stats = monitors[user_id].fetch_user_stats()
+    if stats:
+        save_history(user_id, stats)
     return jsonify(stats)
 
 @app.route('/amishi/api/subscribe/', methods=['POST'])
@@ -230,6 +232,37 @@ def root():
 @app.route('/amishi/')
 def index():
     return render_template('index.html')
+
+HISTORY_FILE = 'follower_history.json'
+
+def load_history():
+    try:
+        with open(HISTORY_FILE, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def save_history(user_id, stats):
+    history = load_history()
+    if user_id not in history:
+        history[user_id] = []
+    
+    history[user_id].append({
+        'count': stats['follower_count'],
+        'timestamp': datetime.now().isoformat()
+    })
+    
+    # Keep only last 7 days of data
+    week_data = history[user_id][-2016:]  # 7 days * 24 hours * 12 updates per hour
+    history[user_id] = week_data
+    
+    with open(HISTORY_FILE, 'w') as f:
+        json.dump(history, f)
+
+@app.route('/amishi/api/history/<user_id>/')
+def get_history(user_id):
+    history = load_history()
+    return jsonify(history.get(user_id, []))
 
 if __name__ == '__main__':
     app.run(debug=True) 
