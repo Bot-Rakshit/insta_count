@@ -298,6 +298,30 @@
         let followerHistory = [];
         const MAX_HISTORY = 2016; // 7 days of 5-minute intervals
 
+        // Format date for display
+        function formatDate(date) {
+            const now = new Date();
+            const d = new Date(date);
+            if (d.toDateString() === now.toDateString()) {
+                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Load history from server
+        async function loadHistory() {
+            try {
+                const response = await fetch(`/amishi/api/history/${INSTAGRAM_USER_ID}/`);
+                followerHistory = await response.json();
+                // Update UI immediately after loading history
+                updateGraph();
+                updateHistory();
+            } catch (error) {
+                console.error('Error loading history:', error);
+                followerHistory = [];
+            }
+        }
+
         async function startMonitoring() {
             try {
                 const response = await fetch('/amishi/api/start_monitoring/', {
@@ -315,7 +339,30 @@
                 }
             } catch (error) {
                 console.error('Error:', error);
+                document.getElementById('stats').innerHTML = `
+                    <div class="empty-state">
+                        <h3>Starting Monitor...</h3>
+                        <p>Please wait while we fetch the initial data.</p>
+                    </div>
+                `;
             }
+        }
+
+        // Initialize the page
+        async function init() {
+            // Show loading state
+            document.getElementById('stats').innerHTML = `
+                <div class="empty-state">
+                    <h3>Loading...</h3>
+                    <p>Fetching Instagram data...</p>
+                </div>
+            `;
+            
+            // Load history first
+            await loadHistory();
+            
+            // Start monitoring
+            await startMonitoring();
         }
 
         function updateGraph() {
@@ -492,11 +539,8 @@
             }
         }
 
-        // Load history when page loads
-        loadHistory();
-        
-        // Start monitoring when page loads
-        startMonitoring();
+        // Initialize when page loads
+        init();
         
         // Update stats every 5 minutes
         setInterval(updateStats, 300000);
