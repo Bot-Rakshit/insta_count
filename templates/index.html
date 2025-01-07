@@ -323,15 +323,32 @@
                 --text-color: #ffffff;
                 --border-color: #333333;
                 --secondary-color: #64b5f6;
-                --grid-line-color: #333333;
-                --axis-label-color: #bbbbbb;
+                --grid-line-color: #404040;
+                --axis-label-color: #ffffff;
                 --data-point-color: #64b5f6;
                 --line-color: #64b5f6;
-                --date-label-color: #dddddd;
+                --date-label-color: #ffffff;
             }
 
             .graph {
                 background: var(--card-background);
+            }
+
+            .graph .axis text,
+            .graph .date-label,
+            .graph text {
+                fill: var(--text-color);
+                opacity: 0.9;
+            }
+
+            .graph .data-point {
+                stroke: var(--card-background);
+            }
+
+            .graph .axis line,
+            .graph .axis path {
+                stroke: var(--grid-line-color);
+                opacity: 0.7;
             }
         }
     </style>
@@ -584,8 +601,8 @@
             for (let i = 0; i <= yTickCount; i++) {
                 const y = yMin + (yMax - yMin) * (i / yTickCount);
                 const yPos = margin.top + yScale(y);
-                gridLines += `<line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" stroke="var(--grid-line-color)" stroke-width="1" opacity="0.5"/>`;
-                timeLabels += `<text x="${margin.left - 10}" y="${yPos}" text-anchor="end" alignment-baseline="middle">${Math.round(y).toLocaleString()}</text>`;
+                gridLines += `<line x1="${margin.left}" y1="${yPos}" x2="${width - margin.right}" y2="${yPos}" class="grid-line" stroke="var(--grid-line-color)" stroke-width="1" opacity="0.5"/>`;
+                timeLabels += `<text x="${margin.left - 10}" y="${yPos}" text-anchor="end" alignment-baseline="middle" class="axis-label">${Math.round(y).toLocaleString()}</text>`;
             }
 
             // Add time labels and data points
@@ -616,7 +633,7 @@
                         minute: '2-digit',
                         hour12: false
                     });
-                    timeLabels += `<text x="${x}" y="${height - 25}" text-anchor="middle">${time}</text>`;
+                    timeLabels += `<text x="${x}" y="${height - 25}" text-anchor="middle" class="axis-label">${time}</text>`;
                 }
             }
 
@@ -631,6 +648,11 @@
                             </feMerge>
                         </filter>
                     </defs>
+                    <style>
+                        .axis-label { fill: var(--axis-label-color); font-weight: 500; }
+                        .date-label { fill: var(--date-label-color); font-weight: 600; }
+                        .grid-line { stroke: var(--grid-line-color); }
+                    </style>
                     <g class="axis">
                         ${gridLines}
                         <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="var(--grid-line-color)" stroke-width="2"/>
