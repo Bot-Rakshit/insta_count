@@ -24,6 +24,7 @@ class InstagramMonitor:
         self.session.headers.update(self.headers)
 
     def fetch_user_stats(self):
+        print(f"Fetching stats for user {self.user_id}")  # Debug log
         payload = {
             'doc_id': '9383802848352200',
             'variables': json.dumps({
@@ -37,28 +38,25 @@ class InstagramMonitor:
                 'https://www.instagram.com/graphql/query',
                 data=payload
             )
+            print(f"Response status: {response.status_code}")  # Debug log
+            print(f"Response content: {response.text[:200]}")  # Debug log first 200 chars
+            
             data = response.json()
             user_data = data['data']['user']
             
-            # Get the highest quality profile picture
-            profile_pic_url = user_data.get('hd_profile_pic_url_info', {}).get('url') or user_data['profile_pic_url']
-            
             return {
                 'username': user_data['username'],
-                'full_name': user_data['full_name'],
-                'follower_count': user_data['follower_count'],
-                'following_count': user_data['following_count'],
-                'media_count': user_data['media_count'],
+                'follower_count': user_data['edge_followed_by']['count'],
+                'following_count': user_data['edge_follow']['count'],
+                'media_count': user_data['edge_owner_to_timeline_media']['count'],
                 'biography': user_data['biography'],
-                'profile_pic_url': profile_pic_url,
+                'external_url': user_data.get('external_url', ''),
                 'is_private': user_data['is_private'],
                 'is_verified': user_data['is_verified'],
-                'category': user_data.get('category', ''),
-                'external_url': user_data.get('external_url', ''),
                 'last_updated': datetime.now().isoformat()
             }
         except Exception as e:
-            print(f"Error fetching data: {e}")
+            print(f"Error fetching Instagram data: {str(e)}")  # Debug log
             return None 
 
     def check_and_notify(self, current_count):

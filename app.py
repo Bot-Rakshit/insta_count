@@ -38,42 +38,59 @@ def update_thresholds():
 
 @app.route('/amishi/api/start_monitoring/', methods=['POST'])
 def start_monitoring():
-    data = request.json
-    user_id = data.get('user_id')
-    
-    if user_id not in monitors:
-        monitors[user_id] = InstagramMonitor(user_id)
-    
-    # Fetch initial stats
-    stats = monitors[user_id].fetch_user_stats()
-    if not stats:
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        
+        if user_id not in monitors:
+            monitors[user_id] = InstagramMonitor(user_id)
+        
+        # Fetch initial stats
+        stats = monitors[user_id].fetch_user_stats()
+        if not stats:
+            print(f"Failed to fetch stats for user {user_id}")  # Debug log
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to fetch initial stats'
+            }), 400
+        
+        save_history(user_id, stats)
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Started monitoring user ID: {user_id}',
+            'stats': stats
+        })
+    except Exception as e:
+        print(f"Error in start_monitoring: {str(e)}")  # Debug log
         return jsonify({
             'status': 'error',
-            'message': 'Failed to fetch initial stats'
-        }), 400
-    
-    save_history(user_id, stats)
-    
-    return jsonify({
-        'status': 'success',
-        'message': f'Started monitoring user ID: {user_id}',
-        'stats': stats
-    })
+            'message': str(e)
+        }), 500
 
 @app.route('/amishi/api/data/<user_id>/', methods=['GET'])
 def get_data(user_id):
-    if user_id not in monitors:
-        monitors[user_id] = InstagramMonitor(user_id)
-    
-    stats = monitors[user_id].fetch_user_stats()
-    if stats:
-        save_history(user_id, stats)
-        history = load_history().get(user_id, [])
+    try:
+        if user_id not in monitors:
+            monitors[user_id] = InstagramMonitor(user_id)
+        
+        stats = monitors[user_id].fetch_user_stats()
+        print(f"Fetched stats: {stats}")  # Debug log
+        
+        if stats:
+            save_history(user_id, stats)
+            history = load_history().get(user_id, [])
+            return jsonify({
+                'stats': stats,
+                'history': history
+            })
+        return jsonify({'stats': None, 'history': []})
+    except Exception as e:
+        print(f"Error in get_data: {str(e)}")  # Debug log
         return jsonify({
-            'stats': stats,
-            'history': history
-        })
-    return jsonify({'stats': None, 'history': []})
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @app.route('/amishi/api/test-notification/')
 def test_notification():

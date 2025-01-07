@@ -496,9 +496,12 @@
                         user_id: INSTAGRAM_USER_ID
                     })
                 });
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to start monitoring');
+                }
                 const result = await response.json();
                 if (result.status === 'success' && result.stats) {
-                    // Use initial stats from monitoring response
                     updateUI(result.stats);
                     return true;
                 }
