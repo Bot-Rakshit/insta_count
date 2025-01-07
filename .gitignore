@@ -9,12 +9,6 @@ __pycache__/
 *$py.class
 *.so
 
-# VAPID Keys
-vapid_keys.txt
-.env
-last_subscription.json
-follower_history.json
-
 # Logs
 *.log
 

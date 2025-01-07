@@ -278,6 +278,7 @@
     <div class="container">
         <div class="header">
             <h1>Instagram Follower Monitor</h1>
+            <button id="installButton" style="display: none;">Install App</button>
         </div>
 
         <div class="card" id="stats"></div>
@@ -295,8 +296,30 @@
 
     <script>
         const INSTAGRAM_USER_ID = "51651500950";
+        let deferredPrompt;
         let followerHistory = [];
         const MAX_HISTORY = 2016; // 7 days of 5-minute intervals
+        let lastUpdate = 0;
+        const UPDATE_INTERVAL = 300000; // 5 minutes in milliseconds
+
+        // Handle PWA installation
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installButton').style.display = 'inline-block';
+        });
+
+        // Install button click handler
+        document.getElementById('installButton').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    document.getElementById('installButton').style.display = 'none';
+                }
+                deferredPrompt = null;
+            }
+        });
 
         // Format date for display
         function formatDate(date) {
@@ -309,17 +332,64 @@
         }
 
         // Load history from server
-        async function loadHistory() {
+        async function fetchData() {
             try {
-                const response = await fetch(`/amishi/api/history/${INSTAGRAM_USER_ID}/`);
-                followerHistory = await response.json();
+                // Only fetch if enough time has passed
+                const now = Date.now();
+                if (now - lastUpdate < UPDATE_INTERVAL) {
+                    return;
+                }
+                
+                const response = await fetch(`/amishi/api/data/${INSTAGRAM_USER_ID}/`);
+                const data = await response.json();
+                
+                if (data.stats) {
+                    followerHistory = data.history;
+                    updateUI(data.stats);
+                    lastUpdate = now;
+                }
+                
                 // Update UI immediately after loading history
                 updateGraph();
                 updateHistory();
             } catch (error) {
                 console.error('Error loading history:', error);
                 followerHistory = [];
+                showError(error);
             }
+        }
+
+        function showError(error) {
+            document.getElementById('stats').innerHTML = `
+                <div class="empty-state">
+                    <h3>Error Loading Data</h3>
+                    <p>${error.message}</p>
+                    <p>Retrying in: <span id="nextUpdate" class="loading">5:00</span></p>
+                </div>
+            `;
+        }
+
+        function updateUI(stats) {
+            document.getElementById('stats').innerHTML = `
+                <h2 style="text-align: center;">${stats.username}</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">${stats.follower_count.toLocaleString()}</div>
+                        <div class="stat-label">Followers</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${stats.following_count.toLocaleString()}</div>
+                        <div class="stat-label">Following</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${stats.media_count.toLocaleString()}</div>
+                        <div class="stat-label">Posts</div>
+                    </div>
+                </div>
+                <p style="white-space: pre-wrap; text-align: center;">${stats.biography || ''}</p>
+                ${stats.external_url ? `<p style="text-align: center;"><a href="${stats.external_url}" target="_blank">${stats.external_url}</a></p>` : ''}
+                <p style="text-align: center; color: var(--secondary-color);">Last Updated: ${new Date(stats.last_updated).toLocaleString()}</p>
+            `;
         }
 
         async function startMonitoring() {
@@ -358,11 +428,10 @@
                 </div>
             `;
             
-            // Load history first
-            await loadHistory();
-            
             // Start monitoring
             await startMonitoring();
+            // Initial data fetch
+            await fetchData();
         }
 
         function updateGraph() {
@@ -493,57 +562,11 @@
             return countdown;
         }
 
-        async function updateStats() {
-            try {
-                const response = await fetch(`/amishi/api/stats/${INSTAGRAM_USER_ID}/`);
-                const stats = await response.json();
-                if (stats) {
-                    // Reload history from server
-                    await loadHistory();
-
-                    // Update UI
-                    document.getElementById('stats').innerHTML = `
-                        <h2 style="text-align: center;">${stats.username}</h2>
-                        <div class="stats-grid">
-                            <div class="stat-item">
-                                <div class="stat-value">${stats.follower_count.toLocaleString()}</div>
-                                <div class="stat-label">Followers</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-value">${stats.following_count.toLocaleString()}</div>
-                                <div class="stat-label">Following</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-value">${stats.media_count.toLocaleString()}</div>
-                                <div class="stat-label">Posts</div>
-                            </div>
-                        </div>
-                        <p style="white-space: pre-wrap; text-align: center;">${stats.biography || ''}</p>
-                        ${stats.external_url ? `<p style="text-align: center;"><a href="${stats.external_url}" target="_blank">${stats.external_url}</a></p>` : ''}
-                        <p style="text-align: center; color: var(--secondary-color);">Last Updated: ${new Date(stats.last_updated).toLocaleString()}</p>
-                    `;
-
-                    updateGraph();
-                    updateHistory();
-                    updateCountdown();
-                }
-            } catch (error) {
-                console.error('Error fetching stats:', error);
-                document.getElementById('stats').innerHTML = `
-                    <div class="empty-state">
-                        <h3>Error Loading Data</h3>
-                        <p>${error.message}</p>
-                        <p>Retrying in: <span id="nextUpdate" class="loading">5:00</span></p>
-                    </div>
-                `;
-            }
-        }
-
         // Initialize when page loads
         init();
         
         // Update stats every 5 minutes
-        setInterval(updateStats, 300000);
+        setInterval(fetchData, UPDATE_INTERVAL);
     </script>
 </body>
 </html> 

@@ -3,7 +3,6 @@ from flask_cors import CORS
 from instagram_monitor import InstagramMonitor
 from datetime import datetime
 import json
-from pywebpush import webpush, WebPushException
 import os
 
 app = Flask(__name__)
@@ -11,46 +10,13 @@ CORS(app)
 app.url_map.strict_slashes = False
 monitors = {}
 
-# Print working directory and permissions at startup
-print(f"Working Directory: {os.getcwd()}")
-print(f"Directory Permissions: {oct(os.stat('.').st_mode)[-3:]}")
-print(f"User Running Process: {os.getuid()}:{os.getgid()}")
-
-def load_vapid_keys():
-    try:
-        with open('vapid_keys.txt', 'r') as f:
-            content = f.read()
-            public_key = content.split('Public Key:\n')[1].split('\n\n')[0].strip()
-            private_key = content.split('Private Key:\n')[1].strip()
-        return public_key, private_key
-    except Exception as e:
-        print(f"Error loading VAPID keys: {e}")
-        return None, None
-
-# Update the app configuration
-public_key, private_key = load_vapid_keys()
-app.config['VAPID_PUBLIC_KEY'] = public_key or os.environ.get('VAPID_PUBLIC_KEY')
-app.config['VAPID_PRIVATE_KEY'] = private_key or os.environ.get('VAPID_PRIVATE_KEY')
-app.config['VAPID_CLAIMS'] = {
-    'sub': 'singhrakshit003@gmail.com',  # Replace with your email
-    'aud': 'https://fcm.googleapis.com'  # Required for Firebase Cloud Messaging
-}
-
-# Add a route to get the public key
-@app.route('/amishi/api/vapid-public-key/')
-def get_vapid_public_key():
-    return jsonify({'publicKey': app.config['VAPID_PUBLIC_KEY']})
-
 @app.route('/amishi/api/update_thresholds/', methods=['POST'])
 def update_thresholds():
     data = request.json
     user_id = data.get('user_id')
-    increase_threshold = data.get('increase_threshold', 100)
-    decrease_threshold = data.get('decrease_threshold', 100)
     
     if user_id in monitors:
-        monitors[user_id].increase_threshold = increase_threshold
-        monitors[user_id].decrease_threshold = decrease_threshold
+        pass
         
     return jsonify({
         'status': 'success',
@@ -61,8 +27,6 @@ def update_thresholds():
 def start_monitoring():
     data = request.json
     user_id = data.get('user_id')
-    increase_threshold = data.get('increase_threshold', 100)
-    decrease_threshold = data.get('decrease_threshold', 100)
     
     if user_id not in monitors:
         monitors[user_id] = InstagramMonitor(
@@ -76,74 +40,20 @@ def start_monitoring():
         'message': f'Started monitoring user ID: {user_id}'
     })
 
-@app.route('/amishi/api/stats/<user_id>/', methods=['GET'])
-def get_stats(user_id):
+@app.route('/amishi/api/data/<user_id>/', methods=['GET'])
+def get_data(user_id):
     if user_id not in monitors:
         monitors[user_id] = InstagramMonitor(user_id)
     
     stats = monitors[user_id].fetch_user_stats()
     if stats:
         save_history(user_id, stats)
-    return jsonify(stats)
-
-@app.route('/amishi/api/subscribe/', methods=['POST'])
-def subscribe():
-    subscription_info = request.json
-    
-    try:
-        print(f"Received subscription info: {subscription_info}")  # Debug print
-        
-        # Use absolute path in the application directory
-        subscription_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'last_subscription.json')
-        print(f"Will save subscription to: {subscription_file}")
-        
-        # Validate subscription info
-        if not subscription_info or 'endpoint' not in subscription_info or 'keys' not in subscription_info:
-            print("Invalid subscription format")
-            return jsonify({
-                'status': 'error',
-                'message': 'Invalid subscription format'
-            }), 400
-        
-        # Save the subscription info for later use
-        print(f"Saving subscription to {subscription_file}")
-        with open(subscription_file, 'w') as f:
-            json.dump(subscription_info, f)
-        # Verify the file was saved
-        if not os.path.exists(subscription_file):
-            print("Failed to save subscription file")
-            return jsonify({
-                'status': 'error',
-                'message': 'Failed to save subscription'
-            }), 500
-        
-        webpush(
-            subscription_info=subscription_info,
-            data="Notifications enabled successfully! 🎉",
-            vapid_private_key=app.config['VAPID_PRIVATE_KEY'],
-            vapid_claims=app.config['VAPID_CLAIMS']
-        )
-        
-        # Read back the saved subscription to verify
-        with open('last_subscription.json', 'r') as f:
-            saved_subscription = json.load(f)
-            print(f"Verified saved subscription: {saved_subscription}")
-        
+        history = load_history().get(user_id, [])
         return jsonify({
-            'status': 'success',
-            'message': 'Subscription successful',
-            'details': {
-                'subscription': subscription_info,
-                'vapid_claims': app.config['VAPID_CLAIMS'],
-                'file_path': os.path.abspath('last_subscription.json')
-            }
+            'stats': stats,
+            'history': history
         })
-    except WebPushException as ex:
-        print(f"WebPush Error: {str(ex)}")  # Debug print
-        return jsonify({'status': 'failed', 'message': str(ex)}), 500
-    except Exception as e:
-        print(f"General Error: {str(e)}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+    return jsonify({'stats': None, 'history': []})
 
 @app.route('/amishi/api/test-notification/')
 def test_notification():
@@ -194,36 +104,6 @@ def test_notification():
         print(f"Error in test_notification: {str(e)}")  # Debug print
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/amishi/api/subscription-status/')
-def subscription_status():
-    try:
-        subscription_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'last_subscription.json')
-        if os.path.exists(subscription_file):
-            with open('last_subscription.json', 'r') as f:
-                subscription = json.load(f)
-            return jsonify({
-                'status': 'success',
-                'message': 'Subscription found',
-                'details': {
-                    'subscription': subscription,
-                    'file_path': os.path.abspath('last_subscription.json')
-                }
-            })
-        else:
-            return jsonify({
-                'status': 'error',
-                'message': 'No subscription found',
-                'details': {
-                    'working_directory': os.getcwd(),
-                    'file_path': os.path.abspath('last_subscription.json')
-                }
-            })
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
-
 # Add root route
 @app.route('/')
 def root():
@@ -258,11 +138,6 @@ def save_history(user_id, stats):
     
     with open(HISTORY_FILE, 'w') as f:
         json.dump(history, f)
-
-@app.route('/amishi/api/history/<user_id>/')
-def get_history(user_id):
-    history = load_history()
-    return jsonify(history.get(user_id, []))
 
 if __name__ == '__main__':
     app.run(debug=True) 

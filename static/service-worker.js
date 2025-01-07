@@ -23,16 +23,4 @@ self.addEventListener('fetch', (event) => {
             return response || fetch(event.request);
         })
     );
-});
-
-self.addEventListener('push', function(event) {
-    const options = {
-        body: event.data.text(),
-        icon: '/static/icon-192x192.png',
-        badge: '/static/icon-192x192.png'
-    };
-
-    event.waitUntil(
-        self.registration.showNotification('Instagram Monitor', options)
-    );
 }); 
